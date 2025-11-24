@@ -1,8 +1,7 @@
 import React from 'react';
-import { UserButton } from '@clerk/clerk-react';
 import { 
   LogoIcon, PlusIcon, HomeIcon, DiscoverIcon, 
-  SpacesIcon, GraphIcon, BellIcon 
+  SpacesIcon, GraphIcon, BellIcon, UserIcon 
 } from './Icons';
 
 interface SidebarProps {
@@ -50,12 +49,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNewThread }) => {
           </button>
           
           <div className="relative group cursor-pointer flex justify-center">
-             <div className="scale-110">
-                <UserButton appearance={{
-                    elements: {
-                        avatarBox: "w-8 h-8"
-                    }
-                }} />
+             <div className="p-1 rounded-full bg-gray-900 text-gray-500 hover:text-white transition-colors border border-gray-800">
+                <UserIcon className="w-6 h-6" />
              </div>
           </div>
        </div>

@@ -2,9 +2,9 @@ import { GoogleGenAI } from "@google/genai";
 import { Message, Source } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const OPENROUTER_API_KEY = "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";
 
 // System prompt optimized for pure speed and data retrieval
-// UPDATED: Relaxed "ALWAYS SEARCH" rule to allow conversational greetings.
 const FAST_SYSTEM_INSTRUCTION = `You are a high-speed search engine interface. 
 
 Guidelines:
@@ -19,7 +19,6 @@ Guidelines:
     - [Question 3]
 `;
 
-// Detailed system prompt for deep thinking/research
 const DEEP_THINK_SYSTEM_INSTRUCTION = `You are a helpful and knowledgeable AI research assistant (Deep Think Mode).
 
 Guidelines:
@@ -41,29 +40,30 @@ Structure for Canvas:
 </immersive>
 `;
 
-// Helper to detect complex queries
 const isComplexQuery = (query: string): boolean => {
   const complexityKeywords = ['analyze', 'compare', 'contrast', 'evaluate', 'implications', 'history of', 'detailed', 'comprehensive', 'code', 'function', 'app', 'grok'];
   const wordCount = query.split(' ').length;
-  // "Hi" is short, so it will fail this and go to FAST mode.
   return wordCount > 15 || complexityKeywords.some(keyword => query.toLowerCase().includes(keyword));
 };
 
 export const streamSearchResponse = async (
   query: string,
   history: Message[],
-  onChunk: (chunk: string) => void,
+  onChunk: (chunk: string, thinking?: string) => void,
   onSources: (sources: Source[]) => void,
-  isDeepThink: boolean
+  isDeepThink: boolean,
+  isReasoning: boolean
 ) => {
-  // 1. Determine Intent
+  // If Reasoning Mode is enabled, bypass Gemini and use Grok via OpenRouter
+  if (isReasoning) {
+    await streamGrokResponse(query, history, onChunk);
+    return;
+  }
+
   const wantsGrok = query.toLowerCase().includes("use grok");
   const complex = isComplexQuery(query);
-  
-  // "Hi" -> complex=false, effectiveDeepThink=false -> FAST_SYSTEM_INSTRUCTION
   const effectiveDeepThink = isDeepThink || wantsGrok || complex;
 
-  // Use gemini-2.0-flash for everything to ensure speed and consistency
   const model = 'gemini-2.0-flash'; 
 
   const contents = history.map(msg => ({
@@ -75,9 +75,6 @@ export const streamSearchResponse = async (
     tools: [{ googleSearch: {} }],
     systemInstruction: effectiveDeepThink ? DEEP_THINK_SYSTEM_INSTRUCTION : FAST_SYSTEM_INSTRUCTION,
   };
-
-  // Note: thinkingConfig is not supported by gemini-2.0-flash, so we rely on system instructions
-  // for the "Deep Think" persona.
 
   try {
     const responseStream = await ai.models.generateContentStream({
@@ -114,3 +111,58 @@ export const streamSearchResponse = async (
     onChunk("\n\n*I encountered an error while processing your request. Please try again later.*");
   }
 };
+
+// OpenRouter Grok 4.1 Integration
+const streamGrokResponse = async (
+  query: string, 
+  history: Message[], 
+  onChunk: (chunk: string, thinking?: string) => void
+) => {
+    try {
+        const messages = history.map(msg => ({
+            role: msg.role === 'model' ? 'assistant' : msg.role,
+            content: msg.text
+        }));
+
+        // Append current query if not already in history (it should be, but safety check)
+        if (messages[messages.length - 1].content !== query) {
+            messages.push({ role: 'user', content: query });
+        }
+
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                "model": "x-ai/grok-4.1-fast:free", // Using free endpoint based on previous context
+                "messages": messages,
+                "stream": false, // Simpler to handle non-stream for reasoning first pass
+                "include_reasoning": true // OpenRouter specific flag for reasoning
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.choices && data.choices.length > 0) {
+            const message = data.choices[0].message;
+            const content = message.content || "";
+            const reasoning = message.reasoning || null; // Check for reasoning field
+
+            // Send thinking content first if available
+            if (reasoning) {
+                onChunk("", reasoning);
+            }
+            
+            // Send main content
+            onChunk(content);
+        } else {
+             onChunk("*Grok response empty or unavailable.*");
+        }
+
+    } catch (error) {
+        console.error("Grok API Error:", error);
+        onChunk("*Error connecting to Grok Reasoning service.*");
+    }
+}

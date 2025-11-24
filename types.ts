@@ -11,6 +11,8 @@ export interface Message {
   imageUrl?: string;
   isThinking?: boolean;
   isDeepThink?: boolean;
+  isReasoning?: boolean; // New flag for Reasoning Mode
+  thinking?: string;     // Content of the thinking/reasoning process
 }
 
 export interface SearchState {

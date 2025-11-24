@@ -3,9 +3,10 @@ import SearchBar from './components/SearchBar';
 import { SourceCard } from './components/SourceCard';
 import { streamSearchResponse } from './services/geminiService';
 import { Message, Source } from './types';
-import { SourcesIcon, AnswerIcon, RelatedIcon, ImageIcon, LoaderIcon } from './components/Icons';
+import { SourcesIcon, AnswerIcon, RelatedIcon, ImageIcon, LoaderIcon, LightbulbIcon } from './components/Icons';
 import Markdown from './components/Markdown';
 import { LoadingStatus } from './components/LoadingStatus';
+import Thinking from './components/Thinking';
 
 // Helper component for smooth image loading
 const ImageWithLoad = ({ src, alt }: { src: string, alt: string }) => {
@@ -45,7 +46,7 @@ const App: React.FC = () => {
   
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const handleSearch = async (query: string, isDeepThink: boolean = false, isImageGen: boolean = false) => {
+  const handleSearch = async (query: string, isDeepThink: boolean = false, isImageGen: boolean = false, isReasoning: boolean = false) => {
     if (!query.trim()) return;
 
     // Check for explicit image generation intent in text if not already set
@@ -54,11 +55,12 @@ const App: React.FC = () => {
 
     const wantsGrok = query.toLowerCase().includes("use grok");
     const effectiveDeepThink = isDeepThink || wantsGrok;
+    const effectiveReasoning = isReasoning || wantsGrok; // Auto-enable reasoning if asking for Grok
 
     setHasStarted(true);
     setIsLoading(true);
 
-    const userMsg: Message = { role: 'user', text: query, isDeepThink: effectiveDeepThink };
+    const userMsg: Message = { role: 'user', text: query, isDeepThink: effectiveDeepThink, isReasoning: effectiveReasoning };
     setMessages(prev => [...prev, userMsg]);
 
     if (effectiveIsImageGen) {
@@ -66,12 +68,8 @@ const App: React.FC = () => {
         const modelMsg: Message = { role: 'model', text: '', isThinking: true };
         setMessages(prev => [...prev, modelMsg]);
 
-        // Simulate a brief "processing" delay before showing the image loader
         setTimeout(() => {
-             // Add random seed to prevent caching and ensure new images for same prompts
              const seed = Math.floor(Math.random() * 1000000);
-             // Extract the prompt part if it starts with "generate an image of..."
-             // Simple clean up: remove "generate an image of" to get a cleaner prompt for Pollinations
              let cleanPrompt = query.replace(/^(generate|create|draw|make) (an )?(image|visual|picture|photo) (of )?/i, '').trim();
              if (!cleanPrompt) cleanPrompt = query;
 
@@ -91,16 +89,19 @@ const App: React.FC = () => {
     }
 
     // Regular Search / Chat Flow
-    setMessages(prev => [...prev, { role: 'model', text: '', isThinking: true, isDeepThink: effectiveDeepThink }]);
+    setMessages(prev => [...prev, { role: 'model', text: '', isThinking: true, isDeepThink: effectiveDeepThink, isReasoning: effectiveReasoning }]);
 
     await streamSearchResponse(
       query,
       messages.concat(userMsg),
-      (chunk) => {
+      (chunk, thinking) => {
         setMessages(prev => {
           const newHistory = [...prev];
           const lastMsg = newHistory[newHistory.length - 1];
           if (lastMsg.role === 'model') {
+            if (thinking) {
+                lastMsg.thinking = thinking;
+            }
             lastMsg.text += chunk;
             lastMsg.isThinking = false;
             
@@ -130,7 +131,8 @@ const App: React.FC = () => {
           return newHistory;
         });
       },
-      effectiveDeepThink
+      effectiveDeepThink,
+      effectiveReasoning
     );
 
     setIsLoading(false);
@@ -171,6 +173,7 @@ const App: React.FC = () => {
 
   const getLoadingState = (msg: Message) => {
     if (msg.imageUrl && !msg.text) return 'thinking';
+    if (msg.isReasoning && !msg.thinking && !msg.text) return 'thinking'; // Grok thinking
     if (msg.isDeepThink && (!msg.sources || msg.sources.length === 0)) {
         return 'thinking';
     }
@@ -234,15 +237,26 @@ const App: React.FC = () => {
                       )}
 
                       <div className="">
+                         {/* Header for Answer Block */}
                          {(!msg.isThinking || getDisplayText(msg.text).length > 0) && (
                              <div className="flex items-center space-x-2 mb-3">
-                                 {msg.imageUrl ? <ImageIcon className="w-5 h-5 text-gray-400" /> : <AnswerIcon className="w-5 h-5 text-gray-400" />}
+                                 {msg.imageUrl ? (
+                                    <ImageIcon className="w-5 h-5 text-gray-400" />
+                                 ) : msg.isReasoning ? (
+                                    <LightbulbIcon className="w-5 h-5 text-amber-500" />
+                                 ) : (
+                                    <AnswerIcon className="w-5 h-5 text-gray-400" />
+                                 )}
+                                 
                                  <div className="flex items-center space-x-2">
                                     <span className="text-base font-medium text-gray-900">
                                         {msg.imageUrl ? "Generated Image" : "Answer"}
                                     </span>
-                                    {msg.isDeepThink && (
+                                    {msg.isDeepThink && !msg.isReasoning && (
                                         <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">Deep Think</span>
+                                    )}
+                                    {msg.isReasoning && (
+                                        <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Grok Reasoning</span>
                                     )}
                                  </div>
                              </div>
@@ -253,6 +267,9 @@ const App: React.FC = () => {
                                <LoadingStatus status={getLoadingState(msg)} sourceCount={msg.sources?.length} />
                            ) : (
                                <>
+                                   {/* Render Thinking Component if content exists */}
+                                   {msg.thinking && <Thinking content={msg.thinking} />}
+                                   
                                    <Markdown content={getDisplayText(msg.text)} />
                                    {msg.imageUrl && (
                                        <ImageWithLoad src={msg.imageUrl} alt={msg.text} />

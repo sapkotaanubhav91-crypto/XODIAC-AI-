@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   SearchIcon, AttachIcon, MicIcon, ArrowRightIcon, BrainIcon, 
-  ImageIcon, FilePlusIcon, TelescopeIcon, BookIcon, MoreHorizontalIcon 
+  ImageIcon, FilePlusIcon, TelescopeIcon, BookIcon, MoreHorizontalIcon, LightbulbIcon 
 } from './Icons';
 
 interface SearchBarProps {
-  onSearch: (query: string, isDeepThink: boolean, isImageGen: boolean) => void;
+  onSearch: (query: string, isDeepThink: boolean, isImageGen: boolean, isReasoning: boolean) => void;
   isLoading: boolean;
   isCentered?: boolean;
 }
@@ -14,6 +14,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isLoading, isCentered =
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [isDeepThink, setIsDeepThink] = useState(false);
+  const [isReasoning, setIsReasoning] = useState(false);
   const [isImageGen, setIsImageGen] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -22,7 +23,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isLoading, isCentered =
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (query.trim() && !isLoading) {
-      onSearch(query, isDeepThink, isImageGen);
+      onSearch(query, isDeepThink, isImageGen, isReasoning);
       if (isCentered) {
         setQuery('');
         setIsImageGen(false);
@@ -59,6 +60,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isLoading, isCentered =
           setIsImageGen(true);
       } else if (option === 'thinking') {
           setIsDeepThink(true);
+      } else if (option === 'reasoning') {
+          setIsReasoning(true);
       }
       setShowAttachMenu(false);
       if (textareaRef.current) {
@@ -94,8 +97,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isLoading, isCentered =
           />
         </div>
 
-        {(isDeepThink || isImageGen) && (
-             <div className="flex items-center space-x-2 px-4 pb-2">
+        {(isDeepThink || isImageGen || isReasoning) && (
+             <div className="flex items-center space-x-2 px-4 pb-2 flex-wrap gap-y-2">
                  {isImageGen && (
                      <span className="flex items-center space-x-1 bg-purple-50 text-purple-600 text-xs px-2 py-1 rounded-md border border-purple-100">
                          <ImageIcon className="w-3 h-3" />
@@ -110,11 +113,32 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isLoading, isCentered =
                          <button onClick={() => setIsDeepThink(false)} className="ml-1 hover:text-blue-800">×</button>
                      </span>
                  )}
+                 {isReasoning && (
+                      <span className="flex items-center space-x-1 bg-amber-50 text-amber-600 text-xs px-2 py-1 rounded-md border border-amber-100">
+                         <LightbulbIcon className="w-3 h-3" />
+                         <span>Grok Reasoning</span>
+                         <button onClick={() => setIsReasoning(false)} className="ml-1 hover:text-amber-800">×</button>
+                     </span>
+                 )}
              </div>
         )}
 
         <div className="flex items-center justify-between px-2 pb-2">
           <div className="flex items-center space-x-2 pl-2 relative">
+            
+            <button 
+              onClick={() => setIsReasoning(!isReasoning)}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                isReasoning 
+                  ? 'bg-amber-50 text-amber-600 border border-amber-100' 
+                  : 'bg-gray-50/50 text-gray-500 hover:bg-gray-100'
+              }`}
+              title="Toggle Grok 4.1 Reasoning"
+            >
+              <LightbulbIcon className={`w-3.5 h-3.5 ${isReasoning ? 'text-amber-500' : ''}`} />
+              <span>Reasoning</span>
+            </button>
+
             <button 
               onClick={() => setIsDeepThink(!isDeepThink)}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
@@ -154,11 +178,19 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isLoading, isCentered =
                         </button>
 
                          <button 
+                            onClick={() => handleAttachOption('reasoning')}
+                            className="w-full text-left flex items-center space-x-3 px-4 py-2.5 hover:bg-gray-50 text-gray-700 transition-colors"
+                        >
+                            <LightbulbIcon className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm">Reasoning</span>
+                        </button>
+
+                         <button 
                             onClick={() => handleAttachOption('thinking')}
                             className="w-full text-left flex items-center space-x-3 px-4 py-2.5 hover:bg-gray-50 text-gray-700 transition-colors"
                         >
                             <BrainIcon className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm">Thinking</span>
+                            <span className="text-sm">Deep Think</span>
                         </button>
                         
                         <button className="w-full text-left flex items-center space-x-3 px-4 py-2.5 hover:bg-gray-50 text-gray-700 transition-colors">

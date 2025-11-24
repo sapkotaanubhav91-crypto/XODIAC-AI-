@@ -1,0 +1,7 @@
+{
+  "name": "Xodiac AI",
+  "description": "A high-fidelity recreation of the Perplexity search interface powered by Gemini with Google Search Grounding.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

@@ -11,16 +11,15 @@
     <style>
       body {
         font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        background-color: #fcfcf9;
-        color: #1f2937;
-        letter-spacing: -0.015em; /* Tight tracking for FK Grotesk feel */
+        background-color: #000000;
+        color: #e5e7eb;
+        letter-spacing: -0.015em;
       }
       .logo-text {
         font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-        font-weight: 500; /* Medium weight exactly matches the screenshot */
-        letter-spacing: -0.045em; /* Very tight tracking for the signature look */
+        font-weight: 500;
+        letter-spacing: -0.045em;
       }
-      /* Custom scrollbar for sources */
       .scrollbar-hide::-webkit-scrollbar {
           display: none;
       }
@@ -28,7 +27,6 @@
           -ms-overflow-style: none;
           scrollbar-width: none;
       }
-      /* Prose adjustments */
       .prose p {
         margin-bottom: 1em;
         line-height: 1.7;
@@ -39,9 +37,9 @@
         theme: {
           extend: {
             colors: {
-              background: '#fcfcf9',
+              background: '#000000',
               primary: {
-                DEFAULT: '#115e59', // Dark teal
+                DEFAULT: '#115e59',
                 light: '#14b8a6',
               },
               dark: '#000000',
@@ -63,7 +61,9 @@
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "@clerk/clerk-react": "https://esm.sh/@clerk/clerk-react@5.2.0?external=react,react-dom"
   }
 }
 </script>
